@@ -83,17 +83,17 @@ pub fn fetch_fed_speech(filter_option: Option<FilterOption>) -> Result<Vec<FedSp
 }
 
 mod eastern_to_utc {
-    use chrono::{DateTime, NaiveDateTime, Utc};
+    use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
     use chrono_tz::US::Eastern;
     use serde::{Deserialize, Deserializer, Serializer};
 
-    const FORMAT: &str = "%m/%d/%Y %I:%M:%S %p";
+    const ET_FORMAT: &str = "%m/%d/%Y %I:%M:%S %p";
 
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(datetime: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_i64(date.timestamp_millis())
+        serializer.serialize_str(&datetime.to_rfc3339_opts(SecondsFormat::Secs, true))
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
@@ -101,9 +101,9 @@ mod eastern_to_utc {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let dt = NaiveDateTime::parse_from_str(&s, FORMAT);
+        let dt = NaiveDateTime::parse_from_str(&s, ET_FORMAT);
         let dt = match dt {
-            Err(_) => NaiveDateTime::parse_from_str(&format!("{} 12:00:00 AM", &s), FORMAT),
+            Err(_) => NaiveDateTime::parse_from_str(&format!("{} 12:00:00 AM", &s), ET_FORMAT),
             dt => dt,
         }
         .map_err(serde::de::Error::custom)?
